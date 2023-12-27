@@ -1,5 +1,7 @@
 import graphene
 from graphene_django import DjangoObjectType
+from django.contrib.auth import get_user_model
+
 
 from nutrisoft.models import Direcccion, Usuario, Publicacion, Comentario, Calificacion, PublicacionGuardada
 
@@ -35,6 +37,7 @@ class UsuarioType(DjangoObjectType):
         model = Usuario
         fields = '__all__'
 
+#crear usuario normal
 class createUsuario(graphene.Mutation):
     usuario = graphene.Field(UsuarioType)
 
@@ -42,24 +45,41 @@ class createUsuario(graphene.Mutation):
         nombresCompleto = graphene.String()
         correo = graphene.String()
         password = graphene.String()
-        cedula = graphene.String()
-        informacion = graphene.String()
         tipoUsuario = graphene.String()
-        calificacion = graphene.Int()
-        direccion = graphene.Int()
-        publicaciones = graphene.Int()
-        PublicacionGuardada = graphene.Int()
     
-    def mutate(self, info, nombresCompleto, correo, password, cedula, informacion, tipoUsuario, calificacion, direccion, publicaciones, PublicacionGuardada): 
+    def mutate(self, info, nombresCompleto, correo, password, tipoUsuario):
 
-        calificacion = Calificacion.objects.get(pk=calificacion)
-        direccion = Direcccion.objects.get(pk=direccion)
-        publicaciones = Publicacion.objects.get(pk=publicaciones)
-        PublicacionGuardada = PublicacionGuardada.objects.get(pk=PublicacionGuardada)
+        Usuario = get_user_model()
 
-        usuario = Usuario(nombresCompleto=nombresCompleto, correo=correo, password=password, cedula=cedula, informacion=informacion, tipoUsuario=tipoUsuario, calificacion=calificacion, direccion=direccion, publicaciones=publicaciones, PublicacionGuardada=PublicacionGuardada)
+        usuario = Usuario.objects.create_user(correo=correo, password=password, nombresCompleto = nombresCompleto, tipoUsuario = tipoUsuario)
+
+        usuario.set_password(password)
         usuario.save()
         return createUsuario(usuario=usuario)
+    
+#crear usuario nutriologo
+class createNutriologo(graphene.Mutation):
+    usuario = graphene.Field(UsuarioType)
+
+    class Arguments:
+        nombresCompleto = graphene.String()
+        correo = graphene.String()
+        password = graphene.String()
+        tipoUsuario = graphene.String()
+        cedula = graphene.String()
+        informacion = graphene.String()
+        direccion = graphene.Int()
+    
+    def mutate(self, info, nombresCompleto, correo, password, tipoUsuario, cedula, informacion, direccion):
+
+        Usuario = get_user_model()
+
+        usuario = Usuario.objects.create_superuser(correo=correo, password=password, nombresCompleto = nombresCompleto, tipoUsuario = tipoUsuario, cedula = cedula, informacion = informacion, direccion = direccion)
+
+        usuario.set_password(password)
+        usuario.save()
+        return createNutriologo(usuario=usuario)
+
 
 
 #publicacion
@@ -76,18 +96,31 @@ class createPublicacion(graphene.Mutation):
         titulo = graphene.String()
         contenido = graphene.String()
         url_imagen = graphene.String()
-        likes = graphene.Int()
-        comentarios = graphene.String()
         Usuario = graphene.Int()
     
-    def mutate(self, info, titulo, contenido, url_imagen, likes, comentarios, Usuario): 
+    def mutate(self, info, titulo, contenido, url_imagen, Usuario): 
 
         Usuario = Usuario.objects.get(pk=Usuario)
-        comentarios = Comentario.objects.get(pk=comentarios)
 
-        publicacion = Publicacion(titulo=titulo, contenido=contenido, url_imagen=url_imagen, likes=likes, comentarios=comentarios, Usuario=Usuario)
+        publicacion = Publicacion(titulo=titulo, contenido=contenido, url_imagen=url_imagen, Usuario=Usuario)
         publicacion.save()
         return createPublicacion(publicacion=publicacion)
+    
+#likes de publicacion
+
+class likesPublicacion(graphene.Mutation):
+    publicacion = graphene.Field(PublicacionType)
+
+    class Arguments:
+        id = graphene.Int()
+        likes = graphene.Int()
+    
+    def mutate(self, info, id, likes): 
+
+        publicacion = Publicacion.objects.get(pk=id)
+        publicacion.likes = likes
+        publicacion.save()
+        return likesPublicacion(publicacion=publicacion)
 
 
 #comentario
@@ -129,13 +162,15 @@ class createCalificacion(graphene.Mutation):
         Comentario = graphene.String()
         calificacion = graphene.Int()
         usuario = graphene.Int()
+        nutrilogo = graphene.Int()
     
-    def mutate(self, info, Comentario, calificacion, usuario): 
+    def mutate(self, info, Comentario, calificacion, usuario, nutrilogo): 
 
         usuario = Usuario.objects.get(pk=usuario)
+        nutrilogo = Usuario.objects.get(pk=nutrilogo)
 
 
-        calificacion = Calificacion(Comentario=Comentario, calificacion=calificacion, usuario=usuario)
+        calificacion = Calificacion(Comentario=Comentario, calificacion=calificacion, usuario=usuario, nutriologo=nutrilogo)
         calificacion.save()
         return createCalificacion(calificacion=calificacion)
 
@@ -173,11 +208,20 @@ class Query(graphene.ObjectType):
     calificaciones = graphene.List(CalificacionType)
     publicacionesGuardadas = graphene.List(PublicacionGuardadaType)
 
+    '''conectado = graphene.Field(UsuarioType)
+
+    def resolve_conectado(self, info):
+        usuario = info.context.user
+        if usuario.is_anonymous:
+            raise Exception('Not logged!')
+        return usuario'''
+    
+
     def resolve_direcciones(self, info):
         return Direcccion.objects.all()
     
     def resolve_usuarios(self, info):
-        return Usuario.objects.all()
+        return get_user_model().Usuario.objects.all()
     
     def resolve_publicaciones(self, info):
         return Publicacion.objects.all()
@@ -200,5 +244,6 @@ class Mutation(graphene.ObjectType):
     create_comentario = createComentario.Field()
     create_calificacion = createCalificacion.Field()
     create_publicacionGuardada = createPublicacionGuardada.Field()
+    createNutriologo = createNutriologo.Field()
 
     
