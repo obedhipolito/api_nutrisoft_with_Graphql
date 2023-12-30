@@ -34,7 +34,7 @@ class createDireccion(graphene.Mutation):
 
 class UsuarioType(DjangoObjectType):
     class Meta:
-        model = Usuario
+        model = get_user_model()
         fields = '__all__'
 
 #crear usuario normal
@@ -208,13 +208,13 @@ class Query(graphene.ObjectType):
     calificaciones = graphene.List(CalificacionType)
     publicacionesGuardadas = graphene.List(PublicacionGuardadaType)
 
-    '''conectado = graphene.Field(UsuarioType)
+    conectado = graphene.Field(UsuarioType)
 
     def resolve_conectado(self, info):
         usuario = info.context.user
         if usuario.is_anonymous:
-            raise Exception('Not logged!')
-        return usuario'''
+            raise Exception('no se a iniciado sesion')
+        return usuario
     
 
     def resolve_direcciones(self, info):
