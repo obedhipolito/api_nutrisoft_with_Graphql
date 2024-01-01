@@ -15,6 +15,7 @@ class UserManager(BaseUserManager):
         usuario.set_password(password)
         usuario.save(using=self._db)
         return usuario
+    
 
     def create_superuser(self, correo, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
@@ -49,6 +50,8 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     informacion = models.CharField(max_length=250, blank=True, null=True, default='')
     tipoUsuario = models.CharField(max_length=10, blank=False, null=False)
     direccion = models.ForeignKey(Direcccion, null=True, on_delete=models.CASCADE)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
 
 
     USERNAME_FIELD = 'correo'

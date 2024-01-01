@@ -1,6 +1,7 @@
 import graphene
 from graphene_django import DjangoObjectType
 from django.contrib.auth import get_user_model
+from graphql import GraphQLError
 
 
 from nutrisoft.models import Direcccion, Usuario, Publicacion, Comentario, Calificacion, PublicacionGuardada
@@ -71,10 +72,24 @@ class createNutriologo(graphene.Mutation):
         direccion = graphene.Int()
     
     def mutate(self, info, nombresCompleto, correo, password, tipoUsuario, cedula, informacion, direccion):
-
         Usuario = get_user_model()
+    
+        direccion_id = None
+        if direccion is not None:
+            direccion_id = Direcccion.objects.get(pk=direccion)
 
-        usuario = Usuario.objects.create_superuser(correo=correo, password=password, nombresCompleto = nombresCompleto, tipoUsuario = tipoUsuario, cedula = cedula, informacion = informacion, direccion = direccion)
+        usuario = Usuario.objects.create_superuser(
+            correo=correo,
+            password=password,
+            nombresCompleto=nombresCompleto,
+            tipoUsuario=tipoUsuario,
+            cedula=cedula,
+            informacion=informacion,
+            direccion=direccion_id
+        )
+
+        usuario.is_staff = True
+        usuario.is_superuser = True
 
         usuario.set_password(password)
         usuario.save()
@@ -96,11 +111,17 @@ class createPublicacion(graphene.Mutation):
         titulo = graphene.String()
         contenido = graphene.String()
         url_imagen = graphene.String()
-        Usuario = graphene.Int()
     
-    def mutate(self, info, titulo, contenido, url_imagen, Usuario): 
+    def mutate(self, info, titulo, contenido, url_imagen): 
 
-        Usuario = Usuario.objects.get(pk=Usuario)
+        user = info.context.user
+        if user.is_anonymous:
+            raise GraphQLError('Debes estar logueado para crear una publicacion')
+        
+        if user.tipoUsuario != 'nutriologo':
+            raise GraphQLError('Debes ser nutriologo para crear una publicacion')
+        
+        Usuario = get_user_model().objects.get(pk=Usuario)
 
         publicacion = Publicacion(titulo=titulo, contenido=contenido, url_imagen=url_imagen, Usuario=Usuario)
         publicacion.save()
@@ -135,12 +156,15 @@ class createComentario(graphene.Mutation):
 
     class Arguments:
         comentario = graphene.String()
-        usuario = graphene.Int()
         publicacion = graphene.Int()
     
-    def mutate(self, info, comentario, usuario, publicacion):
+    def mutate(self, info, comentario, publicacion):
 
-        usuario = Usuario.objects.get(pk=usuario)
+        user = info.context.user
+        if user.is_anonymous:
+            raise GraphQLError('Debes estar logueado para crear una publicacion')
+
+        usuario = get_user_model().objects.get(pk=user.id)
         publicacion = Publicacion.objects.get(pk=publicacion)
 
         comentario = Comentario(comentario=comentario, usuario=usuario, publicacion=publicacion)
@@ -161,16 +185,19 @@ class createCalificacion(graphene.Mutation):
     class Arguments:
         Comentario = graphene.String()
         calificacion = graphene.Int()
-        usuario = graphene.Int()
-        nutrilogo = graphene.Int()
+        nutrilogo_id = graphene.Int()
     
-    def mutate(self, info, Comentario, calificacion, usuario, nutrilogo): 
+    def mutate(self, info, comentario, calificacion, nutrilogo_id): 
+        
+        user = info.context.user
+        if user.is_anonymous:
+            raise GraphQLError('Debes estar logueado para crear una publicacion')
 
-        usuario = Usuario.objects.get(pk=usuario)
-        nutrilogo = Usuario.objects.get(pk=nutrilogo)
+        usuario = get_user_model().objects.get(pk=user.id)
+        nutriologo = Usuario.objects.get(pk=nutrilogo_id)
 
 
-        calificacion = Calificacion(Comentario=Comentario, calificacion=calificacion, usuario=usuario, nutriologo=nutrilogo)
+        calificacion = Calificacion(comentario=comentario, calificacion=calificacion, usuario=usuario, nutriologo=nutriologo)
         calificacion.save()
         return createCalificacion(calificacion=calificacion)
 
@@ -187,12 +214,15 @@ class createPublicacionGuardada(graphene.Mutation):
 
     class Arguments:
         publicacion = graphene.Int()
-        usuario = graphene.Int()
     
-    def mutate(self, info, publicacion, usuario): 
+    def mutate(self, info, publicacion): 
 
+        user = info.context.user
+        if user.is_anonymous:   
+            raise GraphQLError('Debes estar logueado para crear una publicacion')
+
+        usuario = get_user_model().objects.get(pk=user.id)  
         publicacion = Publicacion.objects.get(pk=publicacion)
-        usuario = Usuario.objects.get(pk=usuario)
         
         publicacionGuardada = PublicacionGuardada(publicacion=publicacion, usuario=usuario)
         publicacionGuardada.save()
