@@ -121,9 +121,9 @@ class createPublicacion(graphene.Mutation):
         if user.tipoUsuario != 'nutriologo':
             raise GraphQLError('Debes ser nutriologo para crear una publicacion')
         
-        Usuario = get_user_model().objects.get(pk=Usuario)
+        Usuario_autenticado = user
 
-        publicacion = Publicacion(titulo=titulo, contenido=contenido, url_imagen=url_imagen, Usuario=Usuario)
+        publicacion = Publicacion(titulo=titulo, contenido=contenido, url_imagen=url_imagen, Usuario=Usuario_autenticado)
         publicacion.save()
         return createPublicacion(publicacion=publicacion)
     
@@ -237,6 +237,7 @@ class Query(graphene.ObjectType):
     comentarios = graphene.List(ComentarioType)
     calificaciones = graphene.List(CalificacionType)
     publicacionesGuardadas = graphene.List(PublicacionGuardadaType)
+    likesPublicacion = graphene.List(PublicacionType)
 
     conectado = graphene.Field(UsuarioType)
 
@@ -264,6 +265,9 @@ class Query(graphene.ObjectType):
     
     def resolve_publicacionesGuardadas(self, info):
         return PublicacionGuardada.objects.all()
+    
+    def resolve_likesPublicacion(self, info):
+        return Publicacion.objects.all()
 
 #mutation
 
@@ -275,5 +279,6 @@ class Mutation(graphene.ObjectType):
     create_calificacion = createCalificacion.Field()
     create_publicacionGuardada = createPublicacionGuardada.Field()
     createNutriologo = createNutriologo.Field()
+    likes_publicacion = likesPublicacion.Field()
 
     
