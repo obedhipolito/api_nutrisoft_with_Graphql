@@ -128,8 +128,7 @@ class createPublicacion(graphene.Mutation):
         return createPublicacion(publicacion=publicacion)
     
 #likes de publicacion
-
-class likesPublicacion(graphene.Mutation):
+class createlikes(graphene.Mutation):
     publicacion = graphene.Field(PublicacionType)
 
     class Arguments:
@@ -141,7 +140,7 @@ class likesPublicacion(graphene.Mutation):
         publicacion = Publicacion.objects.get(pk=id)
         publicacion.likes = likes
         publicacion.save()
-        return likesPublicacion(publicacion=publicacion)
+        return createlikes(publicacion=publicacion)
 
 
 #comentario
@@ -165,9 +164,10 @@ class createComentario(graphene.Mutation):
             raise GraphQLError('Debes estar logueado para crear una publicacion')
 
         usuario = get_user_model().objects.get(pk=user.id)
-        publicacion = Publicacion.objects.get(pk=publicacion)
+    
+        publicacion_id = Publicacion.objects.get(pk=publicacion)
 
-        comentario = Comentario(comentario=comentario, usuario=usuario, publicacion=publicacion)
+        comentario = Comentario(comentario=comentario, usuario=usuario, publicacion=publicacion_id)
         comentario.save()
         return createComentario(comentario=comentario)
 
@@ -219,7 +219,7 @@ class createPublicacionGuardada(graphene.Mutation):
 
         user = info.context.user
         if user.is_anonymous:   
-            raise GraphQLError('Debes estar logueado para crear una publicacion')
+            raise GraphQLError('Debes estar logueado para crear guardar una publicacion')
 
         usuario = get_user_model().objects.get(pk=user.id)  
         publicacion = Publicacion.objects.get(pk=publicacion)
@@ -237,8 +237,8 @@ class Query(graphene.ObjectType):
     comentarios = graphene.List(ComentarioType)
     calificaciones = graphene.List(CalificacionType)
     publicacionesGuardadas = graphene.List(PublicacionGuardadaType)
-    likesPublicacion = graphene.List(PublicacionType)
 
+    likesPublicacion = graphene.Int(id=graphene.Int())
     conectado = graphene.Field(UsuarioType)
 
     def resolve_conectado(self, info):
@@ -247,12 +247,16 @@ class Query(graphene.ObjectType):
             raise Exception('no se a iniciado sesion')
         return usuario
     
+    def resolve_likesPublicacion(self, info, id):
+        publicacion=Publicacion.objects.get(pk=id)
+        return publicacion.likes
+    
 
     def resolve_direcciones(self, info):
         return Direcccion.objects.all()
     
     def resolve_usuarios(self, info):
-        return get_user_model().Usuario.objects.all()
+        return get_user_model().objects.all()
     
     def resolve_publicaciones(self, info):
         return Publicacion.objects.all()
@@ -264,10 +268,13 @@ class Query(graphene.ObjectType):
         return Calificacion.objects.all()
     
     def resolve_publicacionesGuardadas(self, info):
-        return PublicacionGuardada.objects.all()
+        user = info.context.user
+        if user.is_anonymous:
+            raise GraphQLError('Debes estar logueado para ver tus publicaciones guardadas')
+        usuario = get_user_model().objects.get(pk=user.id)
+        return PublicacionGuardada.objects.filter(usuario=usuario)
     
-    def resolve_likesPublicacion(self, info):
-        return Publicacion.objects.all()
+
 
 #mutation
 
@@ -279,6 +286,6 @@ class Mutation(graphene.ObjectType):
     create_calificacion = createCalificacion.Field()
     create_publicacionGuardada = createPublicacionGuardada.Field()
     createNutriologo = createNutriologo.Field()
-    likes_publicacion = likesPublicacion.Field()
+    create_like = createlikes.Field()
 
     
