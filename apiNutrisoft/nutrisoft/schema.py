@@ -187,7 +187,7 @@ class createCalificacion(graphene.Mutation):
         calificacion = graphene.Int()
         nutrilogo_id = graphene.Int()
     
-    def mutate(self, info, comentario, calificacion, nutrilogo_id): 
+    def mutate(self, info, Comentario, calificacion, nutrilogo_id): 
         
         user = info.context.user
         if user.is_anonymous:
@@ -197,7 +197,7 @@ class createCalificacion(graphene.Mutation):
         nutriologo = Usuario.objects.get(pk=nutrilogo_id)
 
 
-        calificacion = Calificacion(comentario=comentario, calificacion=calificacion, usuario=usuario, nutriologo=nutriologo)
+        calificacion = Calificacion(Comentario=Comentario, calificacion=calificacion, usuario=usuario, nutriologo=nutriologo)
         calificacion.save()
         return createCalificacion(calificacion=calificacion)
 
