@@ -234,7 +234,7 @@ class Query(graphene.ObjectType):
     direcciones = graphene.List(DireccionType)
     usuarios = graphene.List(UsuarioType)
     publicaciones = graphene.List(PublicacionType)
-    comentarios = graphene.List(ComentarioType)
+    comentarios = graphene.List(ComentarioType,id=graphene.Int())
     calificaciones = graphene.List(CalificacionType)
     publicacionesGuardadas = graphene.List(PublicacionGuardadaType)
 
@@ -261,8 +261,9 @@ class Query(graphene.ObjectType):
     def resolve_publicaciones(self, info):
         return Publicacion.objects.all()
     
-    def resolve_comentarios(self, info):
-        return Comentario.objects.all()
+    def resolve_comentarios(self, info, id):
+        publicacion=Publicacion.objects.get(pk=id)
+        return Comentario.objects.filter(publicacion=publicacion)
     
     def resolve_calificaciones(self, info):
         user = info.context.user
