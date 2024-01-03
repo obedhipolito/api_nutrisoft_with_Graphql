@@ -265,7 +265,11 @@ class Query(graphene.ObjectType):
         return Comentario.objects.all()
     
     def resolve_calificaciones(self, info):
-        return Calificacion.objects.all()
+        user = info.context.user
+        if user.is_anonymous:
+            raise GraphQLError('Debes estar logueado para ver tus calificaciones')
+        usuario = get_user_model().objects.get(pk=user.id)
+        return Calificacion.objects.filter(usuario=usuario)
     
     def resolve_publicacionesGuardadas(self, info):
         user = info.context.user
